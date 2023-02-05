@@ -21,7 +21,7 @@ use actor::{ActorHandle, Message as ActorMessage};
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State, TypedHeader,
+        FromRef, State, TypedHeader,
     },
     response::IntoResponse,
     routing::get,
@@ -45,7 +45,7 @@ use futures::{sink::SinkExt, stream::StreamExt};
 
 use tokio::sync::{mpsc, oneshot};
 
-#[derive(Clone)]
+#[derive(FromRef, Clone)]
 struct AppState {
     handle: ActorHandle,
 }
@@ -99,7 +99,7 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<AppState>,
+    State(handle): State<ActorHandle>,
 ) -> impl IntoResponse {
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
@@ -107,7 +107,7 @@ async fn ws_handler(
         String::from("Unknown browser")
     };
     println!("`{}` at {} connected.", user_agent, addr.to_string());
-    let tx: mpsc::Sender<ActorMessage> = state.handle.tx.clone();
+    let tx: mpsc::Sender<ActorMessage> = handle.tx.clone();
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
     ws.on_upgrade(move |socket| handle_socket(socket, addr, tx))
