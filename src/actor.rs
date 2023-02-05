@@ -42,7 +42,7 @@ impl Actor {
                     let mut notifications = Vec::new();
                     for (k, v) in self.subscribers.iter_mut() {
                         let name = name.clone();
-                        if k.clone() == name {
+                        if k == &name {
                             continue;
                         }
                         let notif = Message::Subscribe {
