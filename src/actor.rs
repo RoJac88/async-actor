@@ -15,7 +15,7 @@ pub enum Message {
         name: String,
     },
     Broadcast {
-        from: String,
+        from: Option<String>,
         body: String,
         #[serde(skip_serializing, skip_deserializing)]
         respond_to: Option<oneshot::Sender<bool>>,
@@ -93,8 +93,10 @@ impl Actor {
                     for (k, v) in self.subscribers.iter_mut() {
                         let from = from.clone();
                         let body = body.clone();
-                        if k == &from {
-                            continue;
+                        if let Some(name) = &from {
+                            if k == name {
+                                continue;
+                            }
                         }
                         let notif = Message::Broadcast {
                             from,

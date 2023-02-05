@@ -93,6 +93,7 @@ async fn main() {
     // run it with hyper
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::debug!("listening on {}", addr);
+    println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
@@ -169,7 +170,10 @@ async fn handle_socket(socket: WebSocket, who: SocketAddr, tx: mpsc::Sender<Acto
                     body,
                     respond_to: _,
                 } => {
-                    let forward_msg = format!("{} says: {}", from, body);
+                    let forward_msg = match from {
+                        Some(name) => format!("{} says: {}", name, body),
+                        None => format!("SERVER: {}", body),
+                    };
                     if sender.send(Message::Text(forward_msg)).await.is_err() {
                         break;
                     }
@@ -246,13 +250,13 @@ async fn process_message(
                 Ok(parsed_msg) => {
                     match parsed_msg {
                         ActorMessage::Broadcast {
-                            from,
+                            from: _,
                             body,
                             respond_to: _,
                         } => {
                             let (tx, rx) = oneshot::channel();
                             let server_msg = ActorMessage::Broadcast {
-                                from,
+                                from: Some(who.to_string()),
                                 body,
                                 respond_to: Some(tx),
                             };
