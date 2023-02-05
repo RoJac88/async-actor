@@ -23,21 +23,18 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State, TypedHeader,
     },
-    http::StatusCode,
     response::IntoResponse,
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
 
 use std::borrow::Cow;
 use std::sync::Arc;
 // use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::ops::ControlFlow;
-use std::{net::SocketAddr, path::PathBuf};
-use tower_http::{
-    services::ServeDir,
-    trace::{DefaultMakeSpan, TraceLayer},
-};
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -61,6 +58,10 @@ async fn main() {
         handle: ActorHandle::new(),
     });
 
+    let cors = CorsLayer::new()
+        // allow requests from any origin
+        .allow_origin(Any);
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -69,19 +70,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
-
     // build our application with some routes
     let app = Router::new()
-        .fallback_service(
-            get_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
-                .handle_error(|error: std::io::Error| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Unhandled internal error: {}", error),
-                    )
-                }),
-        )
+        .layer(cors)
         .route("/ws", get(ws_handler))
         .with_state(shared_state)
         // logging so we can see whats going on
