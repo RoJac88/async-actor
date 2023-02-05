@@ -29,8 +29,6 @@ use axum::{
 };
 
 use std::borrow::Cow;
-use std::sync::Arc;
-// use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::ops::ControlFlow;
 use tower_http::cors::{Any, CorsLayer};
@@ -47,6 +45,7 @@ use futures::{sink::SinkExt, stream::StreamExt};
 
 use tokio::sync::{mpsc, oneshot};
 
+#[derive(Clone)]
 struct AppState {
     handle: ActorHandle,
 }
@@ -54,9 +53,9 @@ struct AppState {
 #[tokio::main]
 async fn main() {
     // All endpoints can comunicate with our actor via the ActorHandle
-    let shared_state = Arc::new(AppState {
+    let shared_state = AppState {
         handle: ActorHandle::new(),
-    });
+    };
 
     let cors = CorsLayer::new()
         // allow requests from any origin
@@ -100,7 +99,7 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()

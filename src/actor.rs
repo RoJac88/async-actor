@@ -113,6 +113,7 @@ impl Actor {
     }
 }
 
+#[derive(Clone)]
 pub struct ActorHandle {
     pub tx: mpsc::Sender<Message>,
 }
